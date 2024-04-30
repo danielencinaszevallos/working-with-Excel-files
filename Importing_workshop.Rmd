@@ -1,0 +1,383 @@
+---
+title: "Importing and Exporting Excel files"
+author: "Daniel Encinas Zevallos ^[Northwestern University]"
+output:
+  html_document:
+    df_print: paged
+    code_download: TRUE
+    toc: true
+    toc_depth: 2
+editor_options:
+  chunk_output_type: inline
+---
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+# Intro
+
+In this workshop, you will learn how to read *quantitative* databases (or data sets) in R. These databases have a typical structure composed of rows (or observations), columns (or variables), and values (also called data points). We also say that these values or data points are located in cells, the intersection between a particular row and variable.
+
+![Structure of Database](/Users/danielencinas/Downloads/structure.png)
+
+In particular, we focus on databases storage in Excel.
+
+Why Excel? Because many scholars, institutions, and organizations storage their data in Excel files. Many people also learn Excel before R, and migrate for the former to the later when learning statistics and data science. It is also not uncommon that our quantitative skills get better while we still struggle to reproduce what we tended to do in Excel in R.
+
+From this viewpoint, this workshop is a first step to close the gap between your Excel skills and your R skills in managing data (i.e, data wrangling and pre-processing).
+
+We will focus on three different types of Excel files: xls., xlsx., and csv. And we will cover multiple common scenarios when working with those files.
+
+# Packages
+
+We will work mainly with the `readxl` library, created by Hadley Wickham. He is one of the Data Scientist behind *tidyverse*, a famous collection of R package.
+
+## Installing
+
+We'll install several packages at once.
+
+```{r}
+# Set the CRAN mirror
+options(repos = "https://cran.r-project.org")
+install.packages(c("readxl", "writexl", "purrr"))
+?cli
+```
+
+# Loading
+
+We'll load several packages at one applying lappy.
+
+```{r}
+packages_to_load <- c("readxl", "writexl", "cli", "purrr", "stringr", "stringi") 
+lapply(packages_to_load, library, character.only=TRUE)
+```
+
+# Importing Excel Files
+
+## A single data frame
+
+We will use a set of data frames included in the `readxl` package. They are all together in a single Excel file but separated into different sheets.
+
+We use the `readxl_example` function to call the specific data set we want and storage it in the object named `xlsx_example`.
+
+```{r}
+xlsx_example <- readxl_example("datasets.xlsx")
+```
+
+We can now check the name of the different sheets.
+
+```{r}
+excel_sheets(xlsx_example)
+```
+
+So, the first sheet contains the iris data, while the last one contains the quake data. In total, there are four sheets containing the following data sets:
+
+- *iris:* "This famous (Fisher's or Anderson's) iris data set gives the measurements in centimeters of the variables...for 50 flowers from each of 3 species of iris."
+- *mtcars:* "The data was extracted from the 1974 Motor Trend US magazine, and comprises fuel consumption and 10 aspects of automobile design and performance for 32 automobiles (1973–74 models)."
+- *chickwts:* "An experiment was conducted to measure and compare the effectiveness of various feed supplements on the growth rate of chickens.
+- *quakes:* "The data set give the locations of 1000 seismic events of MB > 4.0. The events occurred in a cube near Fiji since 1964."
+
+Now, use the `read_excel` function to open the Excel file.
+
+```{r}
+read_excel(xlsx_example)
+```
+
+Notice that it opens the first sheet (iris) by default -- the function is using the argument `sheet=1`. You can use either the sheet number or its name.
+
+Let's run the code again but making explicit `sheet=1`. Also, save this code in the iris object to keep the data in our Global Environment.
+
+```{r}
+iris <- read_excel(xlsx_example, sheet=1) #You do not need sheet=1
+```
+
+We can rapidly explore our data set. 
+
+```{r}
+iris
+```
+
+First, we can check the structure of the data.
+
+```{r}
+str(iris)
+```
+
+We can also check the variables names.
+
+```{r}
+names(iris)
+```
+
+Additionally, we can explore the first values. In this case, we are asking the first 10 values.
+
+```{r}
+head(iris , n=10)
+```
+
+However, the important point here is that we can call a specific sheet in an Excel file. 
+
+# Exercise 1
+
+Read and save the chickwts data set from the "datasets.xlsx". Hint: you can use `excel_sheets` again to check the sheets located in the data set.
+
+```{r}
+
+```
+
+## Multiple sheets
+
+What happens when we want to read multiple sheets at the same time? We can do so by using `purrr` functions. The `purrr` package enhances functional programming. Check the following:
+
+> "...if you’ve never heard of FP before, the best place to start is the family of map() functions which allow you to replace many for loops with code that is both more succinct and easier to read." ([Purr 1.0.2 Reference](https://purrr.tidyverse.org/))
+
+Indeed, we will apply the `map()` function with the purpose of using a programming tool or strategy called *iteration*. Iterations helps when you want to apply the same function to multiple objects, but you want to avoid duplicated code and reduce time (i.e., doing it efficiently). It means you can replace several lines of duplicated code for a single one and perform the same function across multiple objects. Recall: R objects include vectors, data sets, and lists.  
+
+# Question 1
+
+Does iteration sounds similar to something you do in Excel? Hint: think about dragging a formula. 
+
+Now, the `map` function requires two arguments. First, we need to specify inputs; that is, a list of elements. The second part of `map` is simple the function we are applying to the list. For example, check the following image:
+
+! [Caption for the image](/Users/danielencinas/Downloads/map.png)
+
+The list are the databases separated into sheets in the "datasets.xlsx". To access them, we use again `excel_sheets`.  
+
+```{r}
+sheet_names <-excel_sheets(xlsx_example)
+sheet_names
+```
+
+But we add a nuance here, which is the `set_names` function that will assign names of the elements to the output map will create. By default, the names are the original ones in "datasets.xlsx". We can also assign different names to the sheets. 
+
+```{r}
+set_names(sheet_names, c("data_1", "data_2", "data_3", "data_4"))
+```
+
+
+So, the previous line of code with two functions -- set_names and sheet_names -- provides our inputs. We can save it.
+
+```{r}
+input_sheets <- set_names(sheet_names, c("data_1", "data_2", "data_3", "data_4"))
+```
+
+Meanwhile, the function we will apply to each element within input_sheets is `read_excel`. We use `map()`. Notice that `path` is the route to accessing the database. We will use this argument (`path`) later on. 
+
+```{r}
+list_dataframes <-map(input_sheets, #input
+   read_excel, path = xlsx_example) #function and path
+```
+
+So, list_dataframes is an object containing our four dataframes, named "data_1", "data_2", "data_3", and "data_4".
+
+```{r}
+list_dataframes
+```
+
+Now, we will want to separate the databases and save them separately in the Global Environment. The base R `list2env` function is very useful for these purposes.
+
+```{r}
+list2env(list_dataframes, envir = .GlobalEnv) #save in Global Environment
+```
+
+Done! We can now work with the four different data frames. 
+
+# Exercise 2
+
+Let's put your new skills into work. The  "sample.xlsx" data setis located in the following [link](https://docs.google.com/spreadsheets/d/1pWA4NGtTfqK_pQG2b8BdrIuUrMJsGHbE/edit#gid=1805851187). We want you to perform three tasks:
+
+- First, check the sheet names and save them into the *sheet_names2*. Hint: there are two sheets.
+
+```{r}
+
+```
+
+- Second, change the sheet names to *data_a* and *data_b*. Save them into the *input_sheets2* object.
+
+```{r}
+
+```
+
+- Finally, read and save each data set into the Global Environment. Hint: use `path` to specify the location of "sample.xlsx" in your computer. 
+
+```{r}
+
+```
+
+## Common Scenarios
+
+Let´s keep using "sample.xlsx". Imagine you only want to keep the first 20 rows in *bank-full*. You can work with *data_a* in our Global Environment. Alternatively, you can do it directly while reading the data using `n_max`.
+
+```{r}
+read_excel(path = "/Users/danielencinas/Downloads/sample.xlsx", 
+           sheet = 1,
+           n_max = 20)
+```
+
+For removing 10000 rows, we can use the `skip` argument. The problem is that we also remove the column names. So, we will use the `col_names` argument.
+
+First, we store the column names from *data_a*. Let us repeat the three steps above.
+
+```{r}
+getwd()
+setwd("/Users/danielencinas/Downloads")
+sheet_names2 <- excel_sheets(path="sample.xlsx")
+sheet_names2
+input_sheets2 <- set_names(sheet_names2, c("data_a", "data_b"))
+sheet_names2
+```
+
+```{r}
+map(input_sheets2, read_excel, path = "/Users/danielencinas/Downloads/sample.xlsx") %>%
+  list2env(envir = .GlobalEnv)
+```
+
+Now, we can work with *data_a.*
+
+```{r}
+columns_a <- colnames(data_a)
+columns_a
+```
+
+Then, we specify the column names in the `col_names` argument.
+
+```{r}
+read_excel(path = "/Users/danielencinas/Downloads/sample.xlsx", 
+           sheet = 1,
+           skip = 10000,
+           col_names =columns_a)
+```
+
+For specifying the column type, we use the `col_type` argument. But notice that we can effectively remove variables when setting "skip".
+
+```{r}
+read_excel(
+  path = "/Users/danielencinas/Downloads/sample.xlsx",
+  sheet = 1,
+  skip = 10000,
+  col_types = c(
+    "text",
+    "text",
+    "text",
+    "text",
+    "text",
+    "numeric",
+    "skip",
+    "skip",
+    "skip",
+    "skip",
+    "skip",
+    "skip",
+    "skip",
+    "skip",
+    "skip",
+    "skip",
+    "skip"
+  )
+)
+
+```
+
+For instance, the previous code only keeps 6 out of 17 variables. 
+
+Now, you can also select only a range of rows, columns, or cells (i.e., the intersection between rows and columns). First, let us start by selecting rows.
+
+```{r}
+read_excel(path = "/Users/danielencinas/Downloads/sample.xlsx", 
+           sheet = 1,
+           range = cell_rows(1:10000))
+```
+
+Similarly, we can select only the first six rows.
+
+```{r}
+read_excel(path = "/Users/danielencinas/Downloads/sample.xlsx", 
+           sheet = 1,
+           range = cell_cols(1:6))
+```
+
+Finally, we can select cells. Recall Excel name rows as letters and columns as numbers. 
+
+```{r}
+read_excel(path = "/Users/danielencinas/Downloads/sample.xlsx", 
+           sheet = 1,
+           range = "A1:F45211")
+```
+
+The `read_excel` function supports both xlsx. and xls. files. What about csv. files (i.e., comma delimited files)? We use the `read_csv` function or `read.csv`. But let's first write some csv. files. 
+
+# Writing Excel Files
+
+## A single data frame
+
+First, we can save data_1 as iris. 
+
+```{r}
+write.csv(data_1, file = "iris.csv")
+```
+
+Alternatively, you can save the data as a xlsx. document.
+
+```{r}
+write_xlsx(data_1, "iris.xlsx")
+```
+
+# Exercise 3
+
+Save data_2 using its original name. Also, save it as xls. rather than xlsx.  Hint: notice above the way to specify the file type. 
+
+## Multiple data frames at once
+
+We can also write multiple data frames. First, let us save a list of data frames. 
+
+```{r}
+list_dataframes2 <-c("data_1", "data_2", "data_3", "data_4")
+```
+  
+We can now write a function to rename and save csv. files in our computer
+
+```{r}
+write_csv_list <- function(df_list) { #The function starts here
+  for (i in seq_along(df_list)) { #A for loop starts here
+    
+    name <- df_list[i] #We can extract the names of the data
+
+    path<-paste0("/Users/danielencinas/Downloads/new_", name ,".csv") #Change accordingly
+    
+    write.csv(df_list[[i]], file=path) #Export as csv and save using path above
+    
+  } #Here it ends the loop
+  
+} #The end of the function
+```
+
+Let us understand the function bit by bit. First, we extract the names of data bases name with indexing (df_list[i]) . For instance, you can find the second name. In the function above, we save the output as name.
+
+```{r}
+list_dataframes2[2]
+```
+
+We also specify the `path` argument in our function. We use paste0 to create a pattern with the specific path as well as name I am using. For instance, it works as follows with *data_1*
+
+```{r}
+paste0("/Users/danielencinas/Downloads/new_", "data_1",".csv") 
+```
+
+Finally, apply the function to our list.
+
+```{r}
+write_csv_list(list_dataframes2)
+```
+
+# Exercise 4
+
+- Save *data_a* and *data_b* as csv.
+- Read the csv. file
+
+Sources:
+
+- [Data Camp](https://www.datacamp.com/tutorial/r-tutorial-read-excel-into-r)
+-   [R-bloggers](https://www.r-bloggers.com/2022/07/read-data-from-multiple-excel-sheets-and-convert-them-to-individual-data-frames/)
+-   [Stackoverflow](https://stackoverflow.com/questions/50695860/using-write-xlsx-inside-lapply-to-write-each-data-frame-in-global-environment-to)
+-   [R-bloggers](https://www.r-bloggers.com/2022/04/indexing-iterations-with-set_names/)
